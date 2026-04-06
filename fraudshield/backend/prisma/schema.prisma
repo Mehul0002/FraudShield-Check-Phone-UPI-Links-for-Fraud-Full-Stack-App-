@@ -1,0 +1,103 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  passwordHash String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reports Report[]
+
+  @@map("admin_users")
+}
+
+model Entity {
+  id           String   @id @default(cuid())
+  type         EntityType
+  value        String
+  normalizedValue String @unique
+  riskScore    Int      @default(0) @db.SmallInt
+  status       EntityStatus @default(SAFE)
+  firstReported DateTime?
+  lastReported  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  reports      Report[]
+  comments     Comment[]
+
+  @@unique([type, normalizedValue])
+  @@map("entities")
+}
+
+model Report {
+  id            String       @id @default(cuid())
+  entityId      String
+  entity        Entity       @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  reporterName  String?
+  reporterEmail String?
+  fraudCategory FraudCategory
+  description   String
+  evidencePath  String?
+  isApproved    Boolean      @default(false)
+  isRejected    Boolean      @default(false)
+  approvedAt    DateTime?
+  rejectedAt    DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  admin         AdminUser?
+
+  @@map("reports")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  entityId  String
+  entity    Entity   @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  name      String
+  comment   String
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("comments")
+}
+
+enum EntityType {
+  PHONE
+  UPI
+  URL
+}
+
+enum EntityStatus {
+  SAFE
+  LOW_RISK
+  SUSPICIOUS
+  HIGH_RISK
+}
+
+enum FraudCategory {
+  PHISHING
+  OTP_FRAUD
+  FAKE_PAYMENT
+  LOAN_SCAM
+  DELIVERY_SCAM
+  IMPERSONATION
+  JOB_SCAM
+  INVESTMENT_SCAM
+  TECH_SUPPORT_SCAM
+  SPAM
+  OTHER
+}
